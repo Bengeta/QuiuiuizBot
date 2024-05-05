@@ -26,29 +26,30 @@ async def cmd_start(message: types.Message):
     builder.add(types.KeyboardButton(text="Начать игру"))
     await message.answer("Добро пожаловать в квиз!", reply_markup=builder.as_markup(resize_keyboard=True))
     
-@dp.callback_query(F.data == "right_answer")
+@dp.callback_query(F.data.contains("right_answer"))
 async def right_answer(callback: types.CallbackQuery):
     await callback.message.answer("Верно!")
-    await get_question_or_finish_quiz(callback)
+    current_question = await get_next_question(callback.from_user.id)
+    await update_current_score(callback.from_user.id) 
+    await get_question_or_finish_quiz(callback, current_question)
 
 
-@dp.callback_query(F.data == "wrong_answer")
+@dp.callback_query(F.data.contains("wrong_answer"))
 async def wrong_answer(callback: types.CallbackQuery):
     current_question = await get_next_question(callback.from_user.id)
     right_answer = current_question[2]
     await callback.message.answer(f"Неправильно. Правильный ответ: {right_answer}")
-    await get_question_or_finish_quiz(callback)
-
+    await get_question_or_finish_quiz(callback, current_question)
         
-async def get_question_or_finish_quiz(callback):
-            # редактируем текущее сообщение с целью убрать кнопки (reply_markup=None)
+async def get_question_or_finish_quiz(callback, current_question):
         await callback.bot.edit_message_reply_markup(
             chat_id=callback.from_user.id,
             message_id=callback.message.message_id,
             reply_markup=None
         )
-    
-        current_question = await get_next_question(callback.from_user.id)
+        option = callback.data.split('|')[0]
+        await callback.message.answer(f"Вы выбрали вариант: {option}")
+        
         current_question_index = current_question[0]
 
         await update_quiz_index(callback.from_user.id, current_question_index + 1)
@@ -57,6 +58,7 @@ async def get_question_or_finish_quiz(callback):
         if current_question is not None:
            await get_question(callback.message, callback.from_user.id)
         else:
+            await update_high_score(callback.from_user.id)
             await callback.message.answer("Это был последний вопрос. Квиз завершен!")
             
             
@@ -84,9 +86,10 @@ def generate_options_keyboard(answer_options, right_answer):
     builder = InlineKeyboardBuilder()
 
     for option in answer_options:
+        text = f"{option}|{'right_answer' if option == right_answer else 'wrong_answer'}"
         builder.add(types.InlineKeyboardButton(
             text=option,
-            callback_data="right_answer" if option == right_answer else "wrong_answer")
-        )
+            callback_data= text
+        ))
     builder.adjust(1)
     return builder.as_markup()

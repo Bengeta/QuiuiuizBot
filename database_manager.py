@@ -4,7 +4,7 @@ from config import DB_NAME
 
 async def create_tables():
     async with aiosqlite.connect(DB_NAME) as db:
-        await db.execute('''CREATE TABLE IF NOT EXISTS quiz_state (user_id INTEGER PRIMARY KEY, question_index INTEGER, user_name VARCHAR, last_score INTEGER, high_score INTEGER)''')
+        await db.execute('''CREATE TABLE IF NOT EXISTS quiz_state (user_id INTEGER PRIMARY KEY, question_index INTEGER, user_name VARCHAR, last_score INTEGER, high_score INTEGER, current_score INTEGER)''')
         await db.execute('''CREATE TABLE IF NOT EXISTS quiz_questions (question_id INTEGER PRIMARY KEY, question VARCHAR, answer VARCHAR, options VARCHAR)''')
         await db.commit()
 
@@ -15,15 +15,42 @@ async def add_new_user(user_id, user_name):
 
         if user is None:
             await db.execute('''
-                INSERT INTO quiz_state (user_id, question_index, user_name, last_score, high_score)
-                VALUES (?, 1, ?, 0, 0)
-            ''', (user_id, user_name))
-            await db.commit()
+                INSERT INTO quiz_state (user_id, question_index, user_name, last_score, high_score, current_score)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (user_id, 0, user_name, 0, 0, 0))
+        else:
+            await db.execute('''
+                UPDATE quiz_state
+                SET current_score = 0,
+                    question_index = 0
+                WHERE user_id = ?
+            ''', (user_id,))
+        
+        await db.commit()
         
 async def update_quiz_index(user_id, index):
     async with aiosqlite.connect(DB_NAME) as db:
-        await db.execute('INSERT OR REPLACE INTO quiz_state (user_id, question_index) VALUES (?, ?)', (user_id, index))
+        quiz_state = await db.execute('SELECT * FROM quiz_state WHERE user_id = ?', (user_id,))
+        quiz_state = await quiz_state.fetchall()
+        await db.execute('UPDATE quiz_state SET question_index = ? WHERE user_id = ?', (index, user_id))
         await db.commit()
+
+async def update_current_score(user_id):
+    async with aiosqlite.connect(DB_NAME) as db:
+        await db.execute('UPDATE quiz_state SET current_score = current_score + 1 WHERE user_id = ?', (user_id,))
+        await db.commit()
+
+        
+async def update_high_score(user_id):
+    async with aiosqlite.connect(DB_NAME) as db:
+        quiz_state = await db.execute('SELECT * FROM quiz_state WHERE user_id = ?', (user_id, ))
+        quiz_state = await quiz_state.fetchone()
+        if quiz_state is not None and quiz_state[5] > quiz_state[4]:
+            await db.execute('UPDATE quiz_state SET high_score = ? WHERE user_id = ?', (quiz_state[5], user_id))
+        
+        await db.execute('UPDATE quiz_state SET last_score = ? WHERE user_id = ?', (quiz_state[5], user_id))  
+        await db.commit()
+        
 
 async def get_next_question(user_id):
     async with aiosqlite.connect(DB_NAME) as db:
@@ -54,7 +81,7 @@ async def seed_questions():
                 # Вопрос 3
                 (2, "Кто разработчик языка Python?", "Гвидо ван Россум", prepare_options("Гвидо ван Россум", "Деннис Ритчи, Бьёрн Страуструп, Джеймс Гослинг")),
                 # Вопрос 4
-                (3, "Назовите ключевое слово для создания цикла в Python?", "for", prepare_options("for", "if, while, let")),
+                (3, "Назовите ключевое слово для создания цикла со счетчиком в Python?", "for", prepare_options("for", "if, while, let")),
                 # Вопрос 5
                 (4, "Каким образом в Python оформляется блок кода?", "Отступом", prepare_options("Отступом", "Скобками, ключевым словом BEGIN-END, №")),
                 # Вопрос 6
@@ -67,10 +94,10 @@ async def seed_questions():
                 (7, "Что делает функция len()?", "Определяет длину объекта", prepare_options("Определяет длину объекта", "Удаляет последний элемент, Выводит элемент с определенным индексом, Преобразует объект в список")),
                                 
                 # Вопрос 9
-                (8, "Что такое список в Python?", "Структура данных, состоящая из элементов, которая может изменяться", prepare_options("Структура данных, состоящая из элементов, которая может изменяться", "Функция для вывода данных, Тип числовых данных, Неизменяемый тип данных")),
+                (8, "Что такое список в Python?", "Структура данных состоящая из элементов которая может изменяться", prepare_options("Структура данных состоящая из элементов которая может изменяться", "Функция для вывода данных, Тип числовых данных, Неизменяемый тип данных")),
                                 
                 # Вопрос 10
-                (9, "Какие из нижеперечисленных типов данных в Python являются неизменяемыми?", "int, float, str, tuple", prepare_options("int, float, str, tuple", "list, set, dict, int, str, tuple, bytearray, array.array, collections.namedtuple, collections.deque, Модуль для работы с регулярными выражениями"))
+                (9, "Что такое функция в Python?", "Блок повторно используемого кода который выполняет определенное действие", prepare_options("Блок повторно используемого кода который выполняет определенное действие", "Это место для хранения данных, Это основной модуль языка, Это специальный метод для операторов"))
                 ])
             await db.commit()
             
