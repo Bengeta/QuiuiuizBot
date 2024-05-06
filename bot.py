@@ -23,9 +23,12 @@ async def cmd_quiz(message: types.Message):
 @dp.message(F.text=="Вывести таблицу рекордов")
 @dp.message(Command("records"))
 async def cmd_quiz(message: types.Message):
-    await message.answer(f"А вот и таблица результатов!")
-    await add_new_user(message.from_user.id, message.from_user.username)
-    await new_quiz(message)
+    result_list = await get_best_results()
+    result_text = ''
+    for result in result_list:
+        result_text = "\n" + str(result [2]) + " " + str(result[4]) + "\n"
+        
+    await message.answer(f"А вот и таблица результатов!{result_text}")
 
 @dp.message(F.text=="Вывести последний результат")
 @dp.message(Command("last_result"))

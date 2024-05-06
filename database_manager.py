@@ -48,7 +48,12 @@ async def get_last_result(user_id):
             return last_result[0]
         else:
             return "Вы еще не прошли квиз"
-
+        
+async def get_best_results():
+    async with aiosqlite.connect(DB_NAME) as db:
+        cursor = await db.execute('Select * from quiz_state Order by high_score limit 5')
+        best_scores = await cursor.fetchall()
+        return best_scores
         
 async def update_high_score(user_id):
     async with aiosqlite.connect(DB_NAME) as db:
