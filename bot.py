@@ -19,11 +19,26 @@ async def cmd_quiz(message: types.Message):
     await message.answer(f"Давайте начнем квиз!")
     await add_new_user(message.from_user.id, message.from_user.username)
     await new_quiz(message)
+    
+@dp.message(F.text=="Вывести таблицу рекордов")
+@dp.message(Command("records"))
+async def cmd_quiz(message: types.Message):
+    await message.answer(f"А вот и таблица результатов!")
+    await add_new_user(message.from_user.id, message.from_user.username)
+    await new_quiz(message)
+
+@dp.message(F.text=="Вывести последний результат")
+@dp.message(Command("last_result"))
+async def cmd_quiz(message: types.Message):
+    last_result = await get_last_result(message.from_user.id)
+    await message.answer(f"Ваш полседний результат: {last_result}")
 
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
     builder = ReplyKeyboardBuilder()
     builder.add(types.KeyboardButton(text="Начать игру"))
+    builder.add(types.KeyboardButton(text="Вывести таблицу рекордов"))
+    builder.add(types.KeyboardButton(text="Вывести последний результат"))
     await message.answer("Добро пожаловать в квиз!", reply_markup=builder.as_markup(resize_keyboard=True))
     
 @dp.callback_query(F.data.contains("right_answer"))
@@ -60,7 +75,6 @@ async def get_question_or_finish_quiz(callback, current_question):
         else:
             await update_high_score(callback.from_user.id)
             await callback.message.answer("Это был последний вопрос. Квиз завершен!")
-            
             
 
 async def start_bot():

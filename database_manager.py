@@ -40,6 +40,15 @@ async def update_current_score(user_id):
         await db.execute('UPDATE quiz_state SET current_score = current_score + 1 WHERE user_id = ?', (user_id,))
         await db.commit()
 
+async def get_last_result(user_id):
+    async with aiosqlite.connect(DB_NAME) as db:
+        cursor = await db.execute('Select last_score from quiz_state  WHERE user_id = ?', (user_id,))
+        last_result = await cursor.fetchone()
+        if last_result is not None:
+            return last_result[0]
+        else:
+            return "Вы еще не прошли квиз"
+
         
 async def update_high_score(user_id):
     async with aiosqlite.connect(DB_NAME) as db:
@@ -77,7 +86,7 @@ async def seed_questions():
                 # Вопрос 1
                 (0, "Что такое Python?", "Язык программирования", prepare_options("Язык программирования", "Тип данных, Музыкальный инструмент, Змея на английском")),
                 # Вопрос 2
-                (1, "Какой тип данных используется для хранения целых чисел?", "int", prepare_options("int", "float, str, natural")),
+                (7, "Какой тип данных используется для хранения целых чисел?", "int", prepare_options("int", "float, str, natural")),
                 # Вопрос 3
                 (2, "Кто разработчик языка Python?", "Гвидо ван Россум", prepare_options("Гвидо ван Россум", "Деннис Ритчи, Бьёрн Страуструп, Джеймс Гослинг")),
                 # Вопрос 4
@@ -88,17 +97,14 @@ async def seed_questions():
                 (5, "Что выведет это выражение: 'Python' * 3?", "PythonPythonPython", prepare_options("PythonPythonPython", "Python 3, PythonPython3, Ошибка")),
                                 
                 # Вопрос 7
-                (6, "Какое исключение вызывается при делении на ноль?", "ZeroDivisionError", prepare_options("ZeroDivisionError", "DivideByZeroException, ArithmeticError, ValueError")),
-                                
+                (6, "Какое исключение вызывается при делении на ноль?", "ZeroDivisionError", prepare_options("ZeroDivisionError", "DivideByZeroException, ArithmeticError, ValueError")),               
                 # Вопрос 8
-                (7, "Что делает функция len()?", "Определяет длину объекта", prepare_options("Определяет длину объекта", "Удаляет последний элемент, Выводит элемент с определенным индексом, Преобразует объект в список")),
-                                
+                (1, "Роль len()?", "Измеряет длину", prepare_options("Измеряет длину", "Удаление, Выборка, Трансформация")),            
                 # Вопрос 9
-                (8, "Что такое список в Python?", "Структура данных состоящая из элементов которая может изменяться", prepare_options("Структура данных состоящая из элементов которая может изменяться", "Функция для вывода данных, Тип числовых данных, Неизменяемый тип данных")),
-                                
+                (8, "Что такое список в Python?", "Структура данных", prepare_options("Структура данных", "Функция для вывода, Тип данных, Переменная")),       
                 # Вопрос 10
-                (9, "Что такое функция в Python?", "Блок повторно используемого кода который выполняет определенное действие", prepare_options("Блок повторно используемого кода который выполняет определенное действие", "Это место для хранения данных, Это основной модуль языка, Это специальный метод для операторов"))
-                ])
+               (9, "Что такое 'функция'?", "Повторный код", prepare_options("Повторный код", "Хранение данных, Базовый модуль, Специальный метод"))
+               ])
             await db.commit()
             
 def prepare_options(answer, wrong_options):
